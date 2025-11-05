@@ -1,0 +1,53 @@
+{% extends "base_login.html" %} {% block title %}Login{% endblock %} {% block
+content %}
+
+<div
+  class="d-flex justify-content-center align-items-center"
+  style="min-height: 80vh"
+>
+  <div class="card auth-card p-4">
+    <div class="card-body">
+      <div class="text-center auth-logo mb-3">
+        <img
+          src="{{ url_for('static', filename='img/logo.png') }}"
+          alt="Nursila Bakery Logo"
+          class="rounded-circle"
+        />
+        <h2 class="auth-title mt-2">Nursila Bakery</h2>
+      </div>
+
+      <h3 class="h4 fw-bold text-center mb-1">Selamat Datang</h3>
+      <p class="text-muted text-center mb-4">Silakan masuk untuk melanjutkan</p>
+
+      <form method="POST" action="{{ url_for('login') }}">
+        <div class="mb-3">
+          <input
+            type="text"
+            class="form-control"
+            id="username"
+            name="username"
+            placeholder="Username"
+            required
+          />
+        </div>
+
+        <div class="mb-4">
+          <input
+            type="password"
+            class="form-control"
+            id="password"
+            name="password"
+            placeholder="Password"
+            required
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary auth-btn-primary w-100">
+          Masuk
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

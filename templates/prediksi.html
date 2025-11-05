@@ -1,0 +1,122 @@
+{% extends "base.html" %} {% block title %}Prediksi Regresi{% endblock %} {%
+block content %}
+<h1 class="h3 mb-4 text-dark">Halaman Prediksi Penjualan</h1>
+
+{% if not error %}
+<div class="model-summary mb-5 p-4 bg-white rounded shadow-sm">
+  <h2 class="h5 text-primary-app border-bottom pb-2 mb-3">
+    Model yang Digunakan
+  </h2>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="card text-center light-card border-primary-subtle">
+        <div class="card-body">
+          <h5 class="card-title text-muted">R-squared</h5>
+          <p class="card-text lead text-primary-app">
+            {{ metrics['R-squared'] }}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center light-card border-primary-subtle">
+        <div class="card-body">
+          <h5 class="card-title text-muted">Adj. R-squared</h5>
+          <p class="card-text lead text-primary-app">
+            {{ metrics['Adj. R-squared'] }}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center light-card border-primary-subtle">
+        <div class="card-body d-flex flex-column justify-content-center">
+          <h5 class="card-title text-muted mb-3">Detail Model</h5>
+          <a href="{{ url_for('ringkasan_model') }}" class="btn info-btn btn-sm"
+            >Lihat Koefisien & Persamaan Lengkap</a
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="prediction-area mb-5">
+  <div class="p-4 bg-white rounded shadow-sm">
+    <h2 class="h5 text-dark border-bottom pb-2 mb-3">Lakukan Prediksi Baru</h2>
+    <p class="text-muted">
+      Masukkan nilai variabel untuk mendapatkan estimasi Penjualan ({{ y_name |
+      upper }}).
+    </p>
+
+    <form method="POST">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="mb-3">
+            <label for="{{ numeric_var }}" class="form-label"
+              >{{ numeric_var | replace('_', ' ') | title }} (Angka)</label
+            >
+            <input
+              type="number"
+              class="form-control"
+              id="{{ numeric_var }}"
+              name="{{ numeric_var }}"
+              required
+              min="2021"
+              max="2030"
+            />
+          </div>
+        </div>
+
+        {% for category, options in categorical_mapping.items() %}
+        <div class="col-md-4">
+          <div class="mb-3">
+            <label for="{{ category }}" class="form-label"
+              >{{ category | title }}</label
+            >
+            <select
+              class="form-select"
+              id="{{ category }}"
+              name="{{ category }}"
+              required
+            >
+              <option value="" disabled selected>
+                -- Pilih {{ category }} --
+              </option>
+              {% for option in options %}
+              <option value="{{ option }}">
+                {{ option | replace('_', ' ') | title }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <button type="submit" class="btn auth-btn-primary mt-3">
+        Hitung Prediksi
+      </button>
+    </form>
+
+    {% if prediction_result %}
+    <div class="prediction-result-box mt-4 p-4 rounded">
+      <h3 class="h5 text-primary-app">Hasil Prediksi {{ y_name | upper }}</h3>
+      <p class="mb-1">Nilai Prediksi:</p>
+      <strong class="prediction-value display-5"
+        >{{ prediction_result }}</strong
+      >
+      <p class="mt-3 mb-1 text-muted">Variabel Input:</p>
+      <ul class="list-unstyled text-start mx-auto" style="max-width: 300px">
+        {% for key, value in prediction_inputs.items() %} {% if value != 0 %}
+        <li>
+          <strong>{{ key | replace('_', ' ') | title }}:</strong> {{ value }}
+        </li>
+        {% endif %} {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

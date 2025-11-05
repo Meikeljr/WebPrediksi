@@ -1,0 +1,64 @@
+{% extends "base.html" %} {% block title %}Ringkasan Model{% endblock %} {%
+block content %}
+<h1 class="h3 mb-3 text-dark">Ringkasan Model Regresi Linier Berganda</h1>
+<p class="lead text-muted mb-4">
+  Detail lengkap model yang digunakan untuk prediksi penjualan.
+</p>
+
+<div class="row g-4 mb-5">
+  <div class="col-lg-6">
+    <div class="card h-100 border-primary">
+      <div class="card-header bg-primary-app text-white">Metrik Kunci</div>
+      <div class="card-body">
+        <p>
+          <strong>Variabel Dependen (Y):</strong>
+          <span class="text-primary-app">{{ y_name | upper }}</span>
+        </p>
+        <p><strong>R-squared:</strong> {{ metrics['R-squared'] }}</p>
+        <p><strong>Adj. R-squared:</strong> {{ metrics['Adj. R-squared'] }}</p>
+        <p>
+          <strong>F-statistic:</strong> {{ metrics['F-statistic'] }} (Prob: {{
+          metrics['Prob (F-statistic)'] }})
+        </p>
+        <p>
+          <strong>Jumlah Observasi (N):</strong> {{ metrics['N Observasi'] }}
+        </p>
+        <p>
+          <strong>Jumlah Variabel X:</strong> {{ metrics['Jml Variabel
+          Independen'] }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100 border-success">
+      <div class="card-header bg-success text-white">Persamaan Prediksi</div>
+      <div class="card-body">
+        <code class="code-block d-block">{{ equation }}</code>
+        <h5 class="mt-4 mb-2">Variabel yang Digunakan</h5>
+        <ul class="list-group list-group-flush">
+          {% for feature in trained_features %}
+          <li class="list-group-item">{{ feature | replace('_', ' ') }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="h5 section-title border-bottom pb-2 mb-3 text-dark">
+  Tabel Koefisien Regresi (Uji T)
+</h2>
+<div class="table-responsive">
+  <div class="table-container p-3">{{ summary_table | safe }}</div>
+</div>
+<p class="mt-2 text-muted fst-italic">
+  *Tabel ini menunjukkan Koefisien, Standard Error, T-statistik, dan P-Value
+  untuk setiap variabel.
+</p>
+
+<a href="{{ url_for('prediksi') }}" class="btn secondary-btn mt-3"
+  >Kembali ke Halaman Prediksi</a
+>
+{% endblock %}

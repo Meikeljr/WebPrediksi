@@ -1,0 +1,26 @@
+{% extends "base.html" %} {% block title %}Data Penjualan{% endblock %} {% block
+content %}
+<h1 class="h3 mb-3 text-dark">Data Penjualan Lengkap</h1>
+<p class="text-muted">
+  Data historis lengkap disajikan dalam tabel interaktif. Pilih jumlah baris
+  yang ingin ditampilkan di bawah ini.
+</p>
+
+<div class="table-responsive">
+  <div class="table-container p-3">{{ data_html | safe }}</div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  $(document).ready(function () {
+    $("#penjualanTable").DataTable({
+      responsive: true,
+      language: { url: "//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json" },
+      lengthMenu: [
+        [10, 20, 25, -1],
+        ["10 Baris", "20 Baris", "25 Baris", "Semua"],
+      ],
+      dom: "lfrtip",
+    });
+  });
+</script>
+{% endblock %}

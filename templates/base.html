@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Aplikasi Prediksi Regresi{% endblock %}</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css"
+    />
+    <script src="https://unpkg.com/feather-icons"></script>
+  </head>
+  <body>
+    <nav>
+      <ul class="d-flex flex-column mb-auto">
+        {% if current_user.is_authenticated %}
+        <li>
+          <a href="javascript:void(0)" class="logo" id="toggleNav">
+            <img
+              src="{{ url_for('static', filename='img/logo.png') }}"
+              alt="Logo"
+            />
+            <span class="nav-item">Nursila Bakery</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('beranda') }}">
+            <i data-feather="home" class="icon"></i>
+            <span class="nav-item">Beranda</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('data_penjualan') }}">
+            <i data-feather="database" class="icon"></i>
+            <span class="nav-item">Data Penjualan</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('prediksi') }}">
+            <i data-feather="activity" class="icon"></i>
+            <span class="nav-item">Prediksi</span>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+      <ul class="mt-auto">
+        {% if current_user.is_authenticated %}
+        <li class="nav-item">
+          <a href="javascript:void(0)">
+            <i data-feather="user" class="icon"></i>
+            <span class="nav-item">Halo, {{ current_user.name }}</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('logout') }}" class="text-danger">
+            <i data-feather="log-out" class="icon"></i>
+            <span class="nav-item">Log Out</span>
+          </a>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a href="{{ url_for('login') }}">
+            <i data-feather="user" class="icon"></i>
+            <span class="nav-item">Login</span>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+
+    <div class="content-wrapper bg-light">
+      <div class="container-fluid">
+        {% with messages = get_flashed_messages(with_categories=true) %} {% if
+        messages %}
+        <div class="row pt-3">
+          <div class="col">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" role="alert">
+              {{ message }}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %} {% endwith %}
+
+        <main class="py-3">{% block content %}{% endblock %}</main>
+      </div>
+
+      <footer class="footer mt-auto py-3">
+        <p class="mb-0">&copy; 2025 Aplikasi Regresi Linier Berganda</p>
+      </footer>
+    </div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+      crossorigin="anonymous"
+    ></script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script
+      type="text/javascript"
+      charset="utf8"
+      src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"
+    ></script>
+
+    <script>
+      $(document).ready(function () {
+        if ($("#dataTable").length) {
+          $("#dataTable").DataTable({
+            language: {
+              url: "//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json",
+            },
+            paging: true,
+            searching: true,
+            ordering: true,
+            info: true,
+          });
+        }
+      });
+    </script>
+
+    <script>
+      document
+        .getElementById("toggleNav")
+        .addEventListener("click", function () {
+          document.querySelector("nav").classList.toggle("expanded");
+          document
+            .querySelector(".content-wrapper")
+            .classList.toggle("expanded-margin");
+        });
+    </script>
+
+    <script>
+      feather.replace();
+    </script>
+
+    {% block scripts %} {% endblock %}
+  </body>
+</html>
