@@ -7,14 +7,18 @@ import pickle
 import base64
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'kunci_rahasia_dan_unik_anda' # Ganti dengan string yang kuat!
+app.config['SECRET_KEY'] = 'kunci_rahasia_dan_unik_anda' 
 
-# --- FAKE USER DATABASE (Hanya untuk Contoh) ---
+# =======================================================
+# FAKE USER DATABASE
+# =======================================================
 USERS = {
     "admin": {"password": "admin123", "id": 1, "name": "Admin Penjualan"}
 }
 
-# --- USER CLASS UNTUK FLASK-LOGIN ---
+# =======================================================
+# USER CLASS UNTUK FLASK-LOGIN
+# =======================================================
 class User(UserMixin):
     def __init__(self, user_id, username, name):
         self.id = user_id
@@ -32,49 +36,74 @@ def load_user(user_id):
             return User(user_data['id'], username, user_data['name'])
     return None
 
-# --- KONFIGURASI DATA STATIS ---
-STATIC_DATA_PATH = 'data/dummy.csv'
+# =======================================================
+# KONFIGURASI DATA STATIS DAN VARIABEL MODEL
+# =======================================================
+STATIC_DATA_PATH = 'data/penjualan.csv'
 DETAIL_DATA_PATH = 'data/penjualandetail.csv'
 DELIMITER = ',' 
+
 CATEGORICAL_MAPPING = {
     "Periode": ["idul_fitri", "idul_adha"],
-    "Jenis Kue": ["beng_beng", "kue_lainnya", "lidah_kucing", "nastar", "putri_salju", "rambutan", "sagu_keju", "semprit_susu"],
-    "Ukuran": ["sedang", "kecil_besar"]
+    "Jenis Kue": ["Beng_beng", "kue_lainnya", "lidah_kucing", "nastar", "putri_salju_vanilla", "rambutan", "sagu_keju", "semprit_susu"],
+    "Ukuran": ["sedang", "lainnya"]
 }
-NUMERIC_VAR = "tahun"
+NUMERIC_VAR = "Tahun"
+
+REFERENCE_CATEGORIES = {
+    "Periode": "idul_adha",      
+    "Jenis Kue": "kue_lainnya", 
+    "Ukuran": "lainnya"           
+}
 
 # =======================================================
 # UTILITY FUNCTIONS
 # =======================================================
 
-# Helper untuk menyimpan model ke session (encode/decode)
 def encode_model(model):
-    """Mengubah objek model menjadi string base64 yang aman untuk session."""
     return base64.b64encode(pickle.dumps(model)).decode('utf-8')
 
 def decode_model(model_str):
-    """Mengubah string base64 dari session kembali menjadi objek model."""
     return pickle.loads(base64.b64decode(model_str.encode('utf-8')))
 
+def drop_reference_category(data):
+    data_dummies = pd.get_dummies(data, columns=REFERENCE_CATEGORIES.keys(), drop_first=False)
+    
+    cols_to_drop = []
+    for category, ref_option in REFERENCE_CATEGORIES.items():
+        col_to_drop = f"{category}_{ref_option}"
+        if col_to_drop in data_dummies.columns:
+            cols_to_drop.append(col_to_drop)
+            
+    data_final = data_dummies.drop(columns=cols_to_drop, errors='ignore')
+    return data_final
 
 def build_regression_model(data_path):
-    data = pd.read_csv(data_path, sep=DELIMITER, header=0)
-    Y_NAME = data.columns[0] 
+    data_raw = pd.read_csv(data_path, sep=DELIMITER, header=0)
     
-    for col in data.columns:
-        data[col] = pd.to_numeric(data[col], errors='coerce')
-    data.dropna(inplace=True)
+    Y_NAME = data_raw.columns[0].strip()
     
-    Y = data[Y_NAME]
-    X = data.drop(columns=[Y_NAME])
+    for col in [Y_NAME, NUMERIC_VAR]:
+        if col in data_raw.columns:
+             data_raw[col] = pd.to_numeric(data_raw[col], errors='coerce')
+        
+    data_raw.dropna(inplace=True)
+    
+    data_model = drop_reference_category(data_raw)
+    
+    Y = data_model[Y_NAME]
+    X = data_model.drop(columns=[Y_NAME])
+    
+    X = X.astype(float)
+    Y = Y.astype(float)
+    
     X = X.loc[:, (X != X.iloc[0]).any()] 
     
-    if X.empty: raise ValueError("Model tidak dapat dibangun.")
+    if X.empty: raise ValueError("Model tidak dapat dibangun karena tidak ada variabel independen.")
     
     X = sm.add_constant(X, has_constant='add')
     model = sm.OLS(Y, X).fit()
     
-    # Simpan model yang sudah di-fit ke dalam session
     session['fitted_model'] = encode_model(model)
     session['y_name'] = Y_NAME
     session['trained_features'] = X.columns.tolist()
@@ -82,29 +111,46 @@ def build_regression_model(data_path):
     return model, Y_NAME, X.columns.tolist()
 
 def calculate_prediction(model, trained_features, Y_NAME, form_data):
-    input_data = pd.DataFrame(0, index=[0], columns=trained_features)
-    input_data['const'] = 1
+    input_dict = {'const': 1}
     
     tahun_val = pd.to_numeric(form_data.get(NUMERIC_VAR), errors='coerce')
     if tahun_val is None or pd.isna(tahun_val):
          raise ValueError("Input 'Tahun' harus berupa angka.")
-    input_data[NUMERIC_VAR] = tahun_val
+    input_dict[NUMERIC_VAR] = tahun_val
     
+    all_dummy_cols = [f"{cat}_{opt}" for cat, options in CATEGORICAL_MAPPING.items() for opt in options]
+    for col in all_dummy_cols:
+        if col in trained_features:
+            input_dict[col] = 0
+
     for category_name, options in CATEGORICAL_MAPPING.items():
         selected_option = form_data.get(category_name)
-        if selected_option and selected_option in trained_features:
-             input_data[selected_option] = 1
         
-    input_data = input_data[[col for col in input_data.columns if col in trained_features]]
-    input_data = input_data[model.params.index]
+        selected_col_name = f"{category_name}_{selected_option}"
+        
+        if selected_option and selected_option != REFERENCE_CATEGORIES.get(category_name):
+            if selected_col_name in trained_features:
+                 input_dict[selected_col_name] = 1
+        
+    input_data = pd.DataFrame([input_dict], index=[0])
+    
+    required_cols = [col for col in model.params.index if col in input_data.columns]
+    
+    input_data = input_data[required_cols].reindex(columns=model.params.index, fill_value=0)
+    
     prediction = model.predict(input_data)[0]
     
-    return prediction, input_data.drop(columns=['const']).to_dict('records')[0]
+    final_inputs = {}
+    final_inputs[NUMERIC_VAR] = form_data.get(NUMERIC_VAR)
+    
+    for category in CATEGORICAL_MAPPING.keys():
+        final_inputs[category] = form_data.get(category)
+        
+    return prediction, final_inputs
 
 # =======================================================
 # 1. ROUTES AUTENTIKASI (LOGIN & LOGOUT)
 # =======================================================
-# (Tidak Berubah dari Jawaban Sebelumnya)
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -130,7 +176,7 @@ def login():
 @login_required 
 def logout():
     logout_user()
-    session.pop('fitted_model', None) # Hapus model dari session saat logout
+    session.pop('fitted_model', None)
     session.pop('y_name', None)
     session.pop('trained_features', None)
     flash('Anda telah berhasil logout.', 'success')
@@ -142,7 +188,6 @@ def logout():
 
 @app.before_request
 def check_model():
-    """Jalankan model jika belum ada di session sebelum request prediksi/ringkasan."""
     if current_user.is_authenticated and 'fitted_model' not in session and (request.path == url_for('prediksi') or request.path == url_for('ringkasan_model')):
         try:
             build_regression_model(STATIC_DATA_PATH)
@@ -158,17 +203,11 @@ def beranda():
     return render_template('beranda.html')
 
 @app.route('/data_penjualan')
-@login_required # Wajib login
+@login_required
 def data_penjualan():
     try:
-        # 1. Baca data detail baru dengan delimiter yang benar
         data = pd.read_csv(DETAIL_DATA_PATH, sep=DELIMITER, header=0)
-        
-        # 2. Hapus spasi dari nama kolom (untuk HTML/JS yang bersih)
         data.columns = [col.strip().replace(' ', '_') for col in data.columns]
-        
-        # 3. Ubah seluruh data menjadi HTML tanpa styling Pandas
-        # classes='display' PENTING untuk DataTables
         data_html = data.to_html(index=False, classes='table table-striped table-bordered display', table_id='penjualanTable')
         
         return render_template('data_penjualan.html', data_html=data_html)
@@ -192,25 +231,24 @@ def ringkasan_model():
         model = decode_model(session['fitted_model'])
         y_name = session['y_name']
         
-        # Ekstraksi Metrik
         metrics = {
             'R-squared': f"{model.rsquared:.4f}",
             'Adj. R-squared': f"{model.rsquared_adj:.4f}",
             'F-statistic': f"{model.fvalue:.4f}",
             'Prob (F-statistic)': f"{model.f_pvalue:.4f}",
-            'N Observasi': model.nobs,
+            'N Observasi': int(model.nobs), 
             'Jml Variabel Independen': len(model.params) - 1
         }
         
-        # Persamaan Prediksi
         equation = f"{y_name} = {model.params['const']:.4f}"
         for col in model.params.index:
             if col != 'const':
                 equation += f" + {model.params[col]:.4f} * {col.replace('_', ' ')}"
 
-        # Tabel Koefisien
         if len(model.summary().tables) > 1:
-            summary_table = model.summary().tables[1].as_html()
+            summary_table_html = model.summary().tables[1].as_html()
+            summary_table = summary_table_html.replace('<th>', '<th scope="col">').replace('<table', '<table class="table table-sm table-bordered table-striped"').replace('style="', 'data-style="')
+
         else:
             summary_table = "<p>Tabel Koefisien tidak tersedia.</p>"
             
@@ -238,15 +276,17 @@ def prediksi():
     error = None
     
     if 'fitted_model' not in session:
-        # Jika model gagal dibangun di before_request, user akan diarahkan ke beranda
-        return redirect(url_for('beranda'))
+        try:
+             build_regression_model(STATIC_DATA_PATH)
+        except Exception as e:
+            flash(f"Model gagal dibangun saat mencoba prediksi: {e}", 'danger')
+            return redirect(url_for('beranda'))
         
     try:
         model = decode_model(session['fitted_model'])
         y_name = session['y_name']
         trained_features = session['trained_features']
         
-        # Ambil hanya metrik R-squared dan Adj. R-squared untuk ditampilkan di halaman prediksi
         metrics = {
             'R-squared': f"{model.rsquared:.4f}",
             'Adj. R-squared': f"{model.rsquared_adj:.4f}",
@@ -254,7 +294,7 @@ def prediksi():
         
         if request.method == 'POST':
             prediction_result, prediction_inputs = calculate_prediction(model, trained_features, y_name, request.form)
-            prediction_result = f"{prediction_result:.4f}"
+            prediction_result = f"{float(prediction_result):.4f}" 
 
     except Exception as e:
         error = f"Gagal menghitung prediksi: {e}"
