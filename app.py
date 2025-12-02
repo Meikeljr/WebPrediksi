@@ -43,17 +43,36 @@ STATIC_DATA_PATH = 'data/penjualan.csv'
 DETAIL_DATA_PATH = 'data/penjualandetail.csv'
 DELIMITER = ',' 
 
+# PERIODE NUMERICAL MAPPING (idul_adha = 0 (Base/Reference), idul_fitri = 1)
+PERIODE_NUMERIC_MAPPING = {
+    "idul_fitri": 1,
+    "idul_adha": 0
+}
+PERIODE_VAR = "Periode"
+
+# UKURAN NUMERICAL MAPPING (lainnya = 0 (Base/Reference), sedang = 1)
+UKURAN_NUMERIC_MAPPING = {
+    "sedang": 1,
+    "lainnya": 0 
+}
+UKURAN_VAR = "Ukuran"
+
 CATEGORICAL_MAPPING = {
-    "Periode": ["idul_fitri", "idul_adha"],
+    # 'Periode' & 'Ukuran' Dikeluarkan dari sini karena di-encode secara numerik 0/1
     "Jenis Kue": ["Beng_beng", "kue_lainnya", "lidah_kucing", "nastar", "putri_salju_vanilla", "rambutan", "sagu_keju", "semprit_susu"],
-    "Ukuran": ["sedang", "lainnya"]
 }
 NUMERIC_VAR = "Tahun"
 
 REFERENCE_CATEGORIES = {
-    "Periode": "idul_adha",      
+    # 'Periode' & 'Ukuran' Dikeluarkan dari sini
     "Jenis Kue": "kue_lainnya", 
-    "Ukuran": "lainnya"           
+}
+
+# MAPPING UNTUK PEMBENTUKAN FORM PADA prediksi.html 
+FORM_CATEGORICAL_MAPPING = {
+    PERIODE_VAR: list(PERIODE_NUMERIC_MAPPING.keys()),
+    UKURAN_VAR: list(UKURAN_NUMERIC_MAPPING.keys()),
+    **CATEGORICAL_MAPPING
 }
 
 # =======================================================
@@ -67,13 +86,32 @@ def decode_model(model_str):
     return pickle.loads(base64.b64decode(model_str.encode('utf-8')))
 
 def drop_reference_category(data):
-    data_dummies = pd.get_dummies(data, columns=REFERENCE_CATEGORIES.keys(), drop_first=False)
+    # 1. Handle 'Periode' using numerical encoding (0 or 1)
+    if PERIODE_VAR in data.columns:
+        # Mengganti nilai string dengan nilai numerik sesuai mapping
+        data[PERIODE_VAR] = data[PERIODE_VAR].map(PERIODE_NUMERIC_MAPPING)
+        # Hapus baris jika mapping gagal
+        data.dropna(subset=[PERIODE_VAR], inplace=True) 
     
+    # 2. Handle 'Ukuran' using numerical encoding (0 or 1)
+    if UKURAN_VAR in data.columns:
+        data[UKURAN_VAR] = data[UKURAN_VAR].map(UKURAN_NUMERIC_MAPPING)
+        data.dropna(subset=[UKURAN_VAR], inplace=True) 
+
+    # 3. Handle other categorical variables using dummy encoding (one-hot)
+    # Filter kolom kategorikal yang tersisa untuk dummify (yaitu selain 'Periode' dan 'Ukuran')
+    cols_to_dummify = [col for col in REFERENCE_CATEGORIES.keys() if col in data.columns]
+    
+    # Buat variabel dummy untuk kolom-kolom yang tersisa
+    data_dummies = pd.get_dummies(data, columns=cols_to_dummify, drop_first=False)
+    
+    # Hapus kolom referensi untuk variabel dummy
     cols_to_drop = []
     for category, ref_option in REFERENCE_CATEGORIES.items():
-        col_to_drop = f"{category}_{ref_option}"
-        if col_to_drop in data_dummies.columns:
-            cols_to_drop.append(col_to_drop)
+        if category in cols_to_dummify:
+            col_to_drop = f"{category}_{ref_option}"
+            if col_to_drop in data_dummies.columns:
+                cols_to_drop.append(col_to_drop)
             
     data_final = data_dummies.drop(columns=cols_to_drop, errors='ignore')
     return data_final
@@ -89,7 +127,7 @@ def build_regression_model(data_path):
         
     data_raw.dropna(inplace=True)
     
-    data_model = drop_reference_category(data_raw)
+    data_model = drop_reference_category(data_raw) 
     
     Y = data_model[Y_NAME]
     X = data_model.drop(columns=[Y_NAME])
@@ -113,11 +151,25 @@ def build_regression_model(data_path):
 def calculate_prediction(model, trained_features, Y_NAME, form_data):
     input_dict = {'const': 1}
     
+    # 1. Handle NUMERIC_VAR ('Tahun')
     tahun_val = pd.to_numeric(form_data.get(NUMERIC_VAR), errors='coerce')
     if tahun_val is None or pd.isna(tahun_val):
          raise ValueError("Input 'Tahun' harus berupa angka.")
     input_dict[NUMERIC_VAR] = tahun_val
     
+    # 2. Handle PERIODE_VAR ('Periode') - Numerically encoded (0 or 1)
+    periode_selected = form_data.get(PERIODE_VAR)
+    if not periode_selected or periode_selected not in PERIODE_NUMERIC_MAPPING:
+        raise ValueError(f"Input '{PERIODE_VAR}' tidak valid.")
+    input_dict[PERIODE_VAR] = PERIODE_NUMERIC_MAPPING[periode_selected]
+    
+    # 3. Handle UKURAN_VAR ('Ukuran') - Numerically encoded (0 or 1)
+    ukuran_selected = form_data.get(UKURAN_VAR)
+    if not ukuran_selected or ukuran_selected not in UKURAN_NUMERIC_MAPPING:
+        raise ValueError(f"Input '{UKURAN_VAR}' tidak valid.")
+    input_dict[UKURAN_VAR] = UKURAN_NUMERIC_MAPPING[ukuran_selected]
+    
+    # 4. Handle other CATEGORICAL_MAPPING variables (dummy encoded)
     all_dummy_cols = [f"{cat}_{opt}" for cat, options in CATEGORICAL_MAPPING.items() for opt in options]
     for col in all_dummy_cols:
         if col in trained_features:
@@ -128,12 +180,14 @@ def calculate_prediction(model, trained_features, Y_NAME, form_data):
         
         selected_col_name = f"{category_name}_{selected_option}"
         
+        # Cek apakah variabel ini merupakan variabel yang di-dummy (bukan variabel referensi)
         if selected_option and selected_option != REFERENCE_CATEGORIES.get(category_name):
             if selected_col_name in trained_features:
                  input_dict[selected_col_name] = 1
         
     input_data = pd.DataFrame([input_dict], index=[0])
     
+    # Pastikan urutan kolom sesuai dengan model yang dilatih
     required_cols = [col for col in model.params.index if col in input_data.columns]
     
     input_data = input_data[required_cols].reindex(columns=model.params.index, fill_value=0)
@@ -143,9 +197,13 @@ def calculate_prediction(model, trained_features, Y_NAME, form_data):
     final_inputs = {}
     final_inputs[NUMERIC_VAR] = form_data.get(NUMERIC_VAR)
     
+    # Masukkan Periode dan Ukuran ke dalam final_inputs
+    final_inputs[PERIODE_VAR] = form_data.get(PERIODE_VAR)
+    final_inputs[UKURAN_VAR] = form_data.get(UKURAN_VAR)
+    
     for category in CATEGORICAL_MAPPING.keys():
         final_inputs[category] = form_data.get(category)
-        
+            
     return prediction, final_inputs
 
 # =======================================================
@@ -302,7 +360,7 @@ def prediksi():
 
     return render_template('prediksi.html', 
                            y_name=y_name,
-                           categorical_mapping=CATEGORICAL_MAPPING,
+                           categorical_mapping=FORM_CATEGORICAL_MAPPING,
                            numeric_var=NUMERIC_VAR,
                            metrics=metrics, 
                            prediction_result=prediction_result,
