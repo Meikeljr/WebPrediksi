@@ -32,8 +32,8 @@ block content %}
   </div>
 
   <div class="col-lg-6">
-    <div class="card h-100 border-success">
-      <div class="card-header bg-success text-white">Persamaan Prediksi</div>
+    <div class="card h-100 border-primary">
+      <div class="card-header bg-primary text-white">Persamaan Prediksi</div>
       <div class="card-body">
         <code class="code-block d-block">{{ equation }}</code>
         <h5 class="mt-4 mb-2">Variabel yang Digunakan</h5>
@@ -58,7 +58,7 @@ block content %}
   untuk setiap variabel.
 </p>
 
-<a href="{{ url_for('prediksi') }}" class="btn secondary-btn mt-3"
+<a href="{{ url_for('prediksi') }}" class="btn btn-primary mt-3"
   >Kembali ke Halaman Prediksi</a
 >
 {% endblock %}

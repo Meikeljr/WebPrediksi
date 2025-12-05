@@ -5,9 +5,31 @@ import statsmodels.api as sm
 import os
 import pickle
 import base64
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'kunci_rahasia_dan_unik_anda' 
+app.config['SECRET_KEY'] = 'kunci_super_rahasia_dan_sulit_ditebak' 
+# Menggunakan SQLite, database akan disimpan dalam file 'site.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# --- Definisi Model Database ---
+
+class Penjualan(db.Model):
+    # Tabel untuk Penjualan (Pemasukan), tanpa field 'jumlah'
+    id = db.Column(db.Integer, primary_key=True)
+    tanggal = db.Column(db.String(10), nullable=False)
+    produk = db.Column(db.String(100), nullable=False)
+    harga_total = db.Column(db.Float, nullable=False)
+
+class Pengeluaran(db.Model):
+    # Tabel untuk Pengeluaran
+    id = db.Column(db.Integer, primary_key=True)
+    tanggal = db.Column(db.String(10), nullable=False)
+    deskripsi = db.Column(db.String(200), nullable=False)
+    biaya = db.Column(db.Float, nullable=False)
 
 # =======================================================
 # FAKE USER DATABASE
@@ -366,7 +388,116 @@ def prediksi():
                            prediction_result=prediction_result,
                            prediction_inputs=prediction_inputs,
                            error=error)
+
+
+# =======================================================
+# 5. ROUTE PENCATATAN
+# =======================================================    
+@app.route('/pencatatan', methods=['GET', 'POST'])
+@login_required # Tambahkan login_required agar hanya user yang login bisa akses
+def pencatatan():
+    # Ambil data Penjualan dari database, diurutkan berdasarkan tanggal terbaru
+    list_penjualan = Penjualan.query.order_by(Penjualan.tanggal.desc()).limit(15).all()
     
+    if request.method == 'POST':
+        # 1. Ambil data
+        tanggal = request.form.get('tanggal')
+        nama_produk = request.form.get('nama_produk')
+        # ukuran = request.form.get('ukuran', 'N/A') # 'ukuran' tidak ada di model Penjualan, dihapus atau diabaikan
+        harga = request.form.get('harga')
+
+        # 2. Validasi data
+        # 'Waktu, Nama Produk, Harga Total'
+        if not (tanggal and nama_produk and harga):
+            flash('Semua kolom wajib (*Waktu, Nama Produk, Harga Total) untuk Penjualan harus diisi!', 'danger')
+            return redirect(url_for('pencatatan'))
+
+        try:
+            total_harga = float(harga)
+        except ValueError:
+            flash('Harga harus berupa angka yang valid.', 'danger')
+            return redirect(url_for('pencatatan'))
+
+        # 3. Simpan ke Database
+        try:
+            penjualan_baru = Penjualan(
+                tanggal=tanggal,
+                produk=nama_produk,
+                harga_total=total_harga
+            )
+            db.session.add(penjualan_baru)
+            db.session.commit()
+            
+            flash('Transaksi Penjualan berhasil dicatat!', 'success')
+            # Setelah menyimpan, redirect agar list_penjualan diperbarui
+            return redirect(url_for('pencatatan')) 
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Gagal mencatat transaksi: {e}', 'danger')
+            return redirect(url_for('pencatatan'))
+
+    # Saat method GET, kirim data ke template
+    return render_template('pencatatan.html', 
+                           active_tab='penjualan', 
+                           list_penjualan=list_penjualan)
+
+# --- Route Pencatatan Pengeluaran ---
+@app.route('/pengeluaran', methods=['GET', 'POST'])
+@login_required # Tambahkan login_required
+def pengeluaran():
+    # Ambil data Pengeluaran dari database, diurutkan berdasarkan tanggal terbaru
+    list_pengeluaran = Pengeluaran.query.order_by(Pengeluaran.tanggal.desc()).limit(15).all()
+    
+    if request.method == 'POST':
+        # 1. Ambil data
+        tanggal = request.form.get('tanggal')
+        deskripsi = request.form.get('deskripsi_pengeluaran')
+        jumlah_biaya = request.form.get('jumlah_biaya')
+        
+        # 2. Validasi data
+        # 'Waktu, Deskripsi Pengeluaran, Jumlah Biaya'
+        if not (tanggal and deskripsi and jumlah_biaya):
+            flash('Semua kolom wajib (*) untuk Pengeluaran harus diisi!', 'danger')
+            # Redirect ke route 'pengeluaran' yang akan me-render template dengan active_tab='pengeluaran'
+            return redirect(url_for('pengeluaran'))
+
+        try:
+            biaya = float(jumlah_biaya)
+        except ValueError:
+            flash('Jumlah Biaya harus berupa angka yang valid.', 'danger')
+            return redirect(url_for('pengeluaran'))
+
+        # 3. Simpan ke Database
+        try:
+            pengeluaran_baru = Pengeluaran(
+                tanggal=tanggal,
+                deskripsi=deskripsi,
+                biaya=biaya
+            )
+            
+            db.session.add(pengeluaran_baru)
+            db.session.commit()
+            
+            flash('Transaksi **Pengeluaran** berhasil dicatat!', 'success')
+            # Setelah menyimpan, redirect agar list_pengeluaran diperbarui
+            return redirect(url_for('pengeluaran'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Gagal mencatat transaksi: {e}', 'danger')
+            return redirect(url_for('pengeluaran'))
+            
+    # Saat method GET, kirim data ke template
+    return render_template('pencatatan.html', 
+                           active_tab='pengeluaran', 
+                           list_pengeluaran=list_pengeluaran)
+
+
 
 if __name__ == '__main__':
+    # Pastikan database dan tabel dibuat sebelum menjalankan server
+    with app.app_context():
+        db.create_all()
+    
     app.run(debug=True)

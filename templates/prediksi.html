@@ -31,7 +31,7 @@ block content %}
     <div class="col-md-4">
       <div class="card text-center light-card border-primary-subtle">
         <div class="card-body d-flex flex-column justify-content-center">
-          <h5 class="card-title text-muted mb-3">Detail Model</h5>
+          <h5 class="card-title text-muted">Detail Model</h5>
           <a href="{{ url_for('ringkasan_model') }}" class="btn info-btn btn-sm"
             >Lihat Koefisien & Persamaan Lengkap</a
           >
@@ -95,9 +95,7 @@ block content %}
         {% endfor %}
       </div>
 
-      <button type="submit" class="btn auth-btn-primary mt-3">
-        Hitung Prediksi
-      </button>
+      <button type="submit" class="btn info-btn mt-3">Hitung Prediksi</button>
     </form>
 
     {% if prediction_result %}
