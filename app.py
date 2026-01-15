@@ -9,7 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 # ==================== SECTION: APP & DATABASE CONFIG ====================
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'kunci_super_rahasia_dan_sulit_ditebak'
+app.config['SECRET_KEY'] = 'Indomie_321'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
