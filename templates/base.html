@@ -32,7 +32,7 @@
          SIDEBAR NAVIGATION (BARU & MODERN)
     ====================================== -->
     <nav
-      class="sidebar d-flex flex-column flex-shrink-0 p-3 bg-white"
+      class="sidebar expanded d-flex flex-column flex-shrink-0 p-3 bg-white"
       id="sidebar"
     >
       {% if current_user.is_authenticated %}
@@ -111,7 +111,7 @@
     <!-- =====================================
           CONTENT WRAPPER
     ====================================== -->
-    <div class="content-wrapper bg-light">
+    <div class="content-wrapper expanded bg-light">
       <div class="container-fluid">
         {% with messages = get_flashed_messages(with_categories=true) %} {% if
         messages %}

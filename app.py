@@ -55,8 +55,8 @@ STATIC_DATA_PATH = 'data/penjualan.csv'
 DETAIL_DATA_PATH = 'data/penjualandetail.csv'
 DELIMITER = ','
 
-PERIODE_NUMERIC_MAPPING = {"idul_fitri": 1, "idul_adha": 0}
-UKURAN_NUMERIC_MAPPING = {"sedang": 1, "lainnya": 0}
+PERIODE_NUMERIC_MAPPING = {"idul_fitri": 2, "idul_adha": 1}
+UKURAN_NUMERIC_MAPPING = {"sedang": 2, "lainnya": 1}
 CATEGORICAL_MAPPING = {
     "Jenis Kue": ["Beng_beng", "kue_lainnya", "lidah_kucing", "nastar",
                   "putri_salju_vanilla", "rambutan", "sagu_keju", "semprit_susu"]
@@ -128,50 +128,45 @@ def build_regression_model(data_path):
     return model, Y_NAME, X.columns.tolist()
 
 def calculate_prediction(model, trained_features, Y_NAME, form_data):
-    input_dict = {'const': 1}
-
-    tahun_val = pd.to_numeric(form_data.get(NUMERIC_VAR), errors='coerce')
-    if tahun_val is None or pd.isna(tahun_val):
-        raise ValueError("Input 'Tahun' harus berupa angka.")
-    input_dict[NUMERIC_VAR] = tahun_val
-
-    periode_selected = form_data.get(PERIODE_VAR)
-    if not periode_selected or periode_selected not in PERIODE_NUMERIC_MAPPING:
-        raise ValueError(f"Input '{PERIODE_VAR}' tidak valid.")
-    input_dict[PERIODE_VAR] = PERIODE_NUMERIC_MAPPING[periode_selected]
-
-    ukuran_selected = form_data.get(UKURAN_VAR)
-    if not ukuran_selected or ukuran_selected not in UKURAN_NUMERIC_MAPPING:
-        raise ValueError(f"Input '{UKURAN_VAR}' tidak valid.")
-    input_dict[UKURAN_VAR] = UKURAN_NUMERIC_MAPPING[ukuran_selected]
-
-    all_dummy_cols = [f"{cat}_{opt}" for cat, options in CATEGORICAL_MAPPING.items() for opt in options]
-    for col in all_dummy_cols:
-        if col in trained_features:
-            input_dict[col] = 0
-
-    for category_name, options in CATEGORICAL_MAPPING.items():
-        selected_option = form_data.get(category_name)
-        col_name = f"{category_name}_{selected_option}"
-
-        if selected_option and selected_option != REFERENCE_CATEGORIES.get(category_name):
-            if col_name in trained_features:
-                input_dict[col_name] = 1
-
-    input_data = pd.DataFrame([input_dict], index=[0])
-    required_cols = [col for col in model.params.index if col in input_data.columns]
-    input_data = input_data[required_cols].reindex(columns=model.params.index, fill_value=0)
-
-    prediction = model.predict(input_data)[0]
-
-    final_inputs = {
-        NUMERIC_VAR: form_data.get(NUMERIC_VAR),
-        PERIODE_VAR: form_data.get(PERIODE_VAR),
-        UKURAN_VAR: form_data.get(UKURAN_VAR)
+    # Koefisien tetap dari Tabel Coefficients (SPSS)
+    B_CONSTANT = -6954.970
+    B_TAHUN = 3.436
+    B_PERIODE = 9.198
+    B_UKURAN = 4.226
+    
+    # Koefisien Dummy untuk Jenis Kue
+    B_KUE = {
+        "Beng_beng": 9.644,
+        "lidah_kucing": 14.533,
+        "nastar": 11.382,
+        "putri_salju_vanilla": 8.961,
+        "rambutan": 8.825,
+        "sagu_keju": 11.236,
+        "semprit_susu": 8.653,
+        "kue_lainnya": 0.0
     }
 
-    for category in CATEGORICAL_MAPPING.keys():
-        final_inputs[category] = form_data.get(category)
+    # Ambil input dari form
+    tahun = int(form_data.get(NUMERIC_VAR, 0))
+    
+    periode_selected = form_data.get(PERIODE_VAR)
+    periode_val = PERIODE_NUMERIC_MAPPING.get(periode_selected, 0)
+    
+    ukuran_selected = form_data.get(UKURAN_VAR)
+    ukuran_val = UKURAN_NUMERIC_MAPPING.get(ukuran_selected, 0)
+    
+    kue_selected = form_data.get("Jenis Kue")
+    coef_kue = B_KUE.get(kue_selected, 0.0)
+
+    # Hitung berdasarkan Persamaan: Y = Constant + (B1*X1) + (B2*X2) + (B3*X3) + Coef_Kue
+    prediction = B_CONSTANT + (B_TAHUN * tahun) + (B_PERIODE * periode_val) + (B_UKURAN * ukuran_val) + coef_kue
+
+    final_inputs = {
+        "Tahun": tahun,
+        "Periode": f"{periode_selected.replace('_', ' ').title()}",
+        "Jenis Kue": f"{kue_selected.replace('_', ' ').title()}",
+        "Ukuran": f"{ukuran_selected.title()}"
+    }
 
     return prediction, final_inputs
 
@@ -304,7 +299,7 @@ def prediksi():
 
         if request.method == 'POST':
             prediction_result, prediction_inputs = calculate_prediction(model, trained_features, y_name, request.form)
-            prediction_result = f"{float(prediction_result):.4f}"
+            prediction_result = int(round(float(prediction_result)))
 
     except Exception as e:
         error = f"Gagal menghitung prediksi: {e}"

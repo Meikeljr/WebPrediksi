@@ -3,7 +3,7 @@ block content %}
 <h1 class="h3 mb-4 text-dark">Halaman Prediksi Penjualan</h1>
 
 {% if not error %}
-<div class="model-summary mb-5 p-4 bg-white rounded shadow-sm">
+<div class="model-summary mb-3 p-4 bg-white rounded shadow-sm">
   <h2 class="h5 text-primary-app border-bottom pb-2 mb-3">
     Model yang Digunakan
   </h2>
@@ -44,11 +44,9 @@ block content %}
 
 <div class="prediction-area mb-5">
   <div class="p-4 bg-white rounded shadow-sm">
-    <h2 class="h5 text-dark border-bottom pb-2 mb-3">Lakukan Prediksi Baru</h2>
-    <p class="text-muted">
-      Masukkan nilai variabel untuk mendapatkan estimasi Penjualan ({{ y_name |
-      upper }}).
-    </p>
+    <h2 class="h5 text-primary-app border-bottom pb-2 mb-3">
+      Lakukan Prediksi Baru
+    </h2>
 
     <form method="POST">
       <div class="row g-3">
@@ -105,14 +103,15 @@ block content %}
       <strong class="prediction-value display-5"
         >{{ prediction_result }}</strong
       >
-      <p class="mt-3 mb-1 text-muted">Variabel Input:</p>
-      <ul class="list-unstyled text-start mx-auto" style="max-width: 300px">
-        {% for key, value in prediction_inputs.items() %} {% if value != 0 %}
-        <li>
-          <strong>{{ key | replace('_', ' ') | title }}:</strong> {{ value }}
-        </li>
-        {% endif %} {% endfor %}
-      </ul>
+      <p class="mt-3 text-muted">
+        Berdasarkan hasil perhitungan model regresi linier berganda, diperoleh
+        bahwa prediksi jumlah penjualan untuk tahun
+        <strong>{{ prediction_inputs['Tahun'] }}</strong>, dengan periode
+        <strong>{{ prediction_inputs['Periode'] }}</strong>, jenis kue
+        <strong>{{ prediction_inputs['Jenis Kue'] }}</strong>, dan ukuran
+        <strong>{{ prediction_inputs['Ukuran'] }}</strong>, adalah sebesar
+        <strong>{{ prediction_result }}</strong> toples.
+      </p>
     </div>
     {% endif %}
   </div>

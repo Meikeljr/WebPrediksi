@@ -125,8 +125,8 @@ body {
 }
 
 .auth-logo img {
-  width: 90px;
-  height: 90px;
+  width: 120px;
+  height: 120px;
 }
 
 .auth-title {
@@ -135,14 +135,85 @@ body {
 }
 
 .auth-btn-primary {
-  background: var(--light-bg) !important;
-  border-color: var(--light-bg) !important;
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
   transition: background 0.2s ease;
 }
 
 .auth-btn-primary:hover {
   background: var(--secondary) !important;
   border-color: var(--secondary) !important;
+}
+
+/* =============================
+   CAKE AUTO SCROLL SLIDER
+============================= */
+
+.cake-slider-wrapper {
+  overflow: hidden;
+  position: relative;
+}
+
+.cake-slider {
+  display: flex;
+  gap: 20px;
+  width: max-content;
+  animation: autoScroll 35s linear infinite;
+}
+
+.cake-slider:hover {
+  animation-play-state: paused;
+}
+
+.cake-item {
+  flex: 0 0 auto;
+  width: 260px;
+}
+
+.cake-card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transition: transform 0.4s ease;
+}
+
+.cake-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.cake-card:hover {
+  transform: scale(1.05);
+}
+
+/* Overlay Text */
+.cake-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 15px;
+}
+
+.cake-overlay span {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.5px;
+}
+
+/* Auto Scroll Animation */
+@keyframes autoScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 /* ================================

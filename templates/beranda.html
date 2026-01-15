@@ -1,18 +1,56 @@
 {% extends "base.html" %} {% block title %}Beranda{% endblock %} {% block
 content %}
-<p class="fs-6 text-muted">Beranda</p>
-<h2 class="text-center text-dark mb-4">WEBSITE PREDIKSI NURSILA BAKERY</h2>
 
-<div class="card-group">
-  <div class="card shadow-sm border-0">
-    <div class="card-body p-4 text-center">
-      <p class="lead">
-        Selamat datang di website “Prediksi Penjualan Kue Kering pada toko
-        Nursila Bakery”. Web ini dirancang untuk membantu toko Nursila Bakery
-        dalam memprediksi Penjualan Kue Kering pada hari raya Idul Fitri dan
-        Idul Adha.
-      </p>
+<!-- HERO TITLE -->
+<section class="text-center mb-5">
+  <h2 class="fw-bold display-6">Website Prediksi</h2>
+  <p class="text-muted">Nursila Bakery</p>
+</section>
+
+<!-- AUTO SCROLL CAKE SLIDER -->
+<div class="cake-slider-wrapper mb-5">
+  <div class="cake-slider" id="cakeSlider">
+    {% set cakes = [ ('nastar.jpg', 'Nastar'), ('lidah_kucing.jpg', 'Lidah
+    Kucing'), ('sagu_keju.jpg', 'Sagu Keju'), ('beng_beng.jpg', 'Beng-beng'),
+    ('putri_salju.jpg', 'Putri Salju'), ('rambutan.jpg', 'Rambutan'),
+    ('semprit.jpg', 'Semprit Susu') ] %} {% for img, name in cakes %}
+    <!-- DUPLIKASI UNTUK LOOP HALUS -->
+    <div class="cake-item">
+      <div class="cake-card">
+        <img
+          src="{{ url_for('static', filename='img/kue/' + img) }}"
+          alt="{{ name }}"
+        />
+        <div class="cake-overlay">
+          <span>{{ name }}</span>
+        </div>
+      </div>
     </div>
+    {% endfor %} {% for img, name in cakes %}
+    <div class="cake-item">
+      <div class="cake-card">
+        <img
+          src="{{ url_for('static', filename='img/kue/' + img) }}"
+          alt="{{ name }}"
+        />
+        <div class="cake-overlay">
+          <span>{{ name }}</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
   </div>
 </div>
+
+<!-- DESCRIPTION CARD -->
+<div class="card shadow-sm border-0">
+  <div class="card-body p-4 text-center">
+    <p class="lead mb-0">
+      Website ini dikembangkan untuk membantu Nursila Bakery dalam memprediksi
+      penjualan kue kering pada momen hari raya Idul Fitri dan Idul Adha dengan
+      pendekatan analisis data dan regresi linier.
+    </p>
+  </div>
+</div>
+
 {% endblock %}
